@@ -4,11 +4,10 @@
 void Copter::set_auto_armed(bool b)
 {
     // if no change, exit immediately
-    if( ap.auto_armed == b )
-        return;
+    if (ap.auto_armed == b) return;
 
     ap.auto_armed = b;
-    if(b){
+    if (b) {
         LOGGER_WRITE_EVENT(LogEvent::AUTO_ARMED);
     }
 }
