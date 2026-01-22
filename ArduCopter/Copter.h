@@ -228,6 +228,8 @@ public:
     friend class ModeAutorotate;
     friend class ModeTurtle;
 
+    friend class ModeDrawStar;
+
     friend class _AutoTakeoff;
 
     friend class PayloadPlace;
@@ -1005,6 +1007,9 @@ private:
 #if MODE_FOLLOW_ENABLED == ENABLED
     ModeFollow mode_follow;
 #endif
+
+
+
 #if MODE_GUIDED_ENABLED == ENABLED
     ModeGuided mode_guided;
 #endif
@@ -1053,6 +1058,12 @@ private:
 #if MODE_TURTLE_ENABLED == ENABLED
     ModeTurtle mode_turtle;
 #endif
+
+#if MODE_DRAWSTAR_ENABLED == ENABLED
+    ModeDrawStar mode_drawstar;
+#endif
+
+
 
     // mode.cpp
     Mode *mode_from_mode_num(const Mode::Number mode);
