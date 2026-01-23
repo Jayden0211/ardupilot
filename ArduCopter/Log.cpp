@@ -105,6 +105,26 @@ void Copter::Log_Write_EKF_POS()
     AP::ahrs().Log_Write();
 }
 
+//记录log OpenMV数据包
+struct PACKED log_OpenMV {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t cx;
+    uint8_t cy;
+};
+
+void Copter::Log_Write_OpenMV()
+{
+    struct log_OpenMV pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_OPENMV_MSG),
+        time_us         : AP_HAL::micros64(),
+        cx              : openmv.cx,
+        cy              : openmv.cy
+    };
+    logger.WriteBlock(&pkt, sizeof(pkt));
+}
+
+
 struct PACKED log_Data_Int16t {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -560,6 +580,7 @@ const struct LogStructure Copter::log_structure[] = {
 
     { LOG_GUIDED_ATTITUDE_TARGET_MSG, sizeof(log_Guided_Attitude_Target),
       "GUIA",  "QBffffffff",    "TimeUS,Type,Roll,Pitch,Yaw,RollRt,PitchRt,YawRt,Thrust,ClimbRt", "s-dddkkk-n", "F-000000-0" , true },
+<<<<<<< Updated upstream
 
 // @LoggerMessage: RTDT
 // @Description: Attitude controller time deltas
@@ -572,6 +593,11 @@ const struct LogStructure Copter::log_structure[] = {
     { LOG_RATE_THREAD_DT_MSG, sizeof(log_Rate_Thread_Dt),
       "RTDT", "Qffff", "TimeUS,dt,dtAvg,dtMax,dtMin", "sssss", "F----" , true },
 
+=======
+      
+    { LOG_OPENMV_MSG, sizeof(log_OpenMV),
+      "OMVN",  "QBB",           "TimeUS,CentX,CentY", "s--", "F--" },
+>>>>>>> Stashed changes
 };
 
 uint8_t Copter::get_num_log_structures() const
