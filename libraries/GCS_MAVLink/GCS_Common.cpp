@@ -1241,7 +1241,7 @@ bool GCS_MAVLINK::do_try_send_message(const ap_message id)
     void *data = hal.scheduler->disable_interrupts_save();
     uint32_t start_send_message_us = AP_HAL::micros();
 #endif
-    if (!try_send_message(id)) {
+    if (!try_send_message(id)) {    //飞控的用的单独的表
         // didn't fit in buffer...
 #if GCS_DEBUG_SEND_MESSAGE_TIMINGS
         try_send_message_stats.no_space_for_message++;
@@ -1475,7 +1475,7 @@ void GCS_MAVLINK::update_send()
         {
             const int8_t next = deferred_message_to_send_index(start16);
             if (next != -1) {
-                if (!do_try_send_message(deferred_message[next].id)) {
+                if (!do_try_send_message(deferred_message[next].id)) {   //根据数据队列数据是否发出
                     break;
                 }
                 // we try to keep output on a regular clock to avoid

@@ -19,60 +19,7 @@
  *  Creator:        Jason Short
  *  Lead Developer: Randy Mackay
  *  Lead Tester:    Marco Robustini
- *  Based on code and ideas from the Arducopter team: Leonard Hall, Andrew
- Tridgell, Robert Lefebvre, Pat Hickey, Michael Oborne, Jani Hirvinen, Olivier
- Adler, Kevin Hester, Arthur Benemann, Jonathan Challinger, John Arne Birkeland,
-                                                      Jean-Louis Naudin, Mike
- Smith, and more
- *  Thanks to: Chris Anderson, Jordi Munoz, Jason Short, Doug Weibel, Jose Julio
- *
- *  Special Thanks to contributors (in alphabetical order by first name):
- *
- *  Adam M Rivera       :Auto Compass Declination
- *  Amilcar Lucas       :Camera mount library
- *  Andrew Tridgell     :General development, Mavlink Support
- *  Andy Piper          :Harmonic notch, In-flight FFT, Bi-directional DShot,
- various drivers
- *  Angel Fernandez     :Alpha testing
- *  AndreasAntonopoulous:GeoFence
- *  Arthur Benemann     :DroidPlanner GCS
- *  Benjamin Pelletier  :Libraries
- *  Bill King           :Single Copter
- *  Christof Schmid     :Alpha testing
- *  Craig Elder         :Release Management, Support
- *  Dani Saez           :V Octo Support
- *  Doug Weibel         :DCM, Libraries, Control law advice
- *  Emile Castelnuovo   :VRBrain port, bug fixes
- *  Gregory Fletcher    :Camera mount orientation math
- *  Guntars             :Arming safety suggestion
- *  HappyKillmore       :Mavlink GCS
- *  Hein Hollander      :Octo Support, Heli Testing
- *  Igor van Airde      :Control Law optimization
- *  Jack Dunkle         :Alpha testing
- *  James Goppert       :Mavlink Support
- *  Jani Hiriven        :Testing feedback
- *  Jean-Louis Naudin   :Auto Landing
- *  John Arne Birkeland :PPM Encoder
- *  Jose Julio          :Stabilization Control laws, MPU6k driver
- *  Julien Dubois       :PosHold flight mode
- *  Julian Oes          :Pixhawk
- *  Jonathan Challinger :Inertial Navigation, CompassMot, Spin-When-Armed
- *  Kevin Hester        :Andropilot GCS
- *  Max Levine          :Tri Support, Graphics
- *  Leonard Hall        :Flight Dynamics, Throttle, Loiter and Navigation
- Controllers
- *  Marco Robustini     :Lead tester
- *  Michael Oborne      :Mission Planner GCS
- *  Mike Smith          :Pixhawk driver, coding support
- *  Olivier Adler       :PPM Encoder, piezo buzzer
- *  Pat Hickey          :Hardware Abstraction Layer (HAL)
- *  Robert Lefebvre     :Heli Support, Copter LEDs
- *  Roberto Navoni      :Library testing, Porting to VRBrain
- *  Sandro Benigno      :Camera support, MinimOSD
- *  Sandro Tognana      :PosHold flight mode
- *  Sebastian Quilter   :SmartRTL
- *  ..and many more.
- *
+
  *  Code commit statistics can be found here:
  https://github.com/ArduPilot/ardupilot/graphs/contributors
  *  Wiki: https://copter.ardupilot.org/
@@ -85,181 +32,220 @@
 #include "version.h"
 #undef FORCE_VERSION_H_INCLUDE
 
+// 访问底层硬件的标准入口
+// 用引用避免拷贝大对象，用const保证硬件操作安全
+// 所有对串口、定时器、GPIO 等硬件的操作，都要通过这个hal引用完成
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
-#define SCHED_TASK(func, _interval_ticks, _max_time_micros, _prio)             \
-    SCHED_TASK_CLASS(Copter, &copter, func, _interval_ticks, _max_time_micros, \
-                     _prio)
-#define FAST_TASK(func) FAST_TASK_CLASS(Copter, &copter, func)
+// func 要执行的任务函数（Copter 类的成员方法）
+// _interval_ticks任务执行频率（每秒多少次）
+// _max_time_micros任务预估执行时间（微秒）
+// _prio任务优先级（0 最高，255 最低）
 
-/*
-  scheduler table - all tasks should be listed here.
 
-  All entries in this table must be ordered by priority.
+#define SCHED_TASK(func, _interval_ticks, _max_time_micros, _prio)      \
+        SCHED_TASK_CLASS(Copter, &copter, func, _interval_ticks, _max_time_micros,_prio)
 
-  This table is interleaved with the table in AP_Vehicle to determine
-  the order in which tasks are run.  Convenience methods SCHED_TASK
-  and SCHED_TASK_CLASS are provided to build entries in this structure:
+// FAST_TASK是对FAST_TASK_CLASS的封装，专门用于高频核心任务
+#define FAST_TASK(func) \
+        FAST_TASK_CLASS(Copter, &copter, func)
 
-SCHED_TASK arguments:
- - name of static function to call
- - rate (in Hertz) at which the function should be called
- - expected time (in MicroSeconds) that the function should take to run
- - priority (0 through 255, lower number meaning higher priority)
-
-SCHED_TASK_CLASS arguments:
- - class name of method to be called
- - instance on which to call the method
- - method to call on that instance
- - rate (in Hertz) at which the method should be called
- - expected time (in MicroSeconds) that the method should take to run
- - priority (0 through 255, lower number meaning higher priority)
-
- */
+//-------------------------任务调度-------------------------------//
+// AP_Scheduler是外层类名，Task是AP_Scheduler类中嵌套定义的结构体
+// scheduler_tasks是Copter类的静态成员数组
 const AP_Scheduler::Task Copter::scheduler_tasks[] = {
-    // update INS immediately to get current gyro data populated
+    // ========================= 必须执行的快速任务 (必须始终运行) =========================
+    // 立即更新IMU以获取当前陀螺仪数据
     FAST_TASK_CLASS(AP_InertialSensor, &copter.ins, update),
-    // run low level rate controllers that only require IMU data
+    // 运行仅需要IMU数据的低级速率控制器
     FAST_TASK(run_rate_controller),
+    // 立即向电机库发送输出信号
+    FAST_TASK(motors_output),
+    // 运行EKF状态估计器
+    FAST_TASK(read_AHRS),
+    // 惯性导航更新
+    FAST_TASK(read_inertia),
+    // 检查EKF是否重置了目标航向或位置
+    FAST_TASK(check_ekf_reset),
+    // 运行姿态控制器
+    FAST_TASK(update_flight_mode),
+    // 从EKF更新主页位置
+    FAST_TASK(update_home_from_EKF),
+    // 检查是否着陆或坠毁
+    FAST_TASK(update_land_and_crash_detectors),
+    // 更新测距仪地形偏移
+    FAST_TASK(update_rangefinder_terrain_offset),
+
+    // ========================= 必须执行的标准任务 (必须始终运行) =========================
+    // RC通道处理(250Hz)
+    SCHED_TASK(rc_loop, 250, 130, 3),
+    // 油门循环处理(50Hz)
+    SCHED_TASK(throttle_loop, 50, 75, 6),
+    // GPS更新(50Hz)
+    SCHED_TASK_CLASS(AP_GPS, &copter.gps, update, 50, 200, 9),
+    // 更新电池和罗盘(10Hz)
+    SCHED_TASK(update_batt_compass, 10, 120, 15),
+    // RC通道辅助功能读取(10Hz)
+    SCHED_TASK_CLASS(RC_Channels, (RC_Channels*)&copter.g2.rc_channels,
+                     read_aux_all, 10, 50, 18),
+    // 电机武装检查(10Hz)
+    SCHED_TASK(arm_motors_check, 10, 50, 21),
+    // 自动解除武装检查(10Hz)
+    SCHED_TASK(auto_disarm_check, 10, 50, 27),
+    // 自动调整(10Hz)
+    SCHED_TASK(auto_trim, 10, 75, 30),
+    // 更新高度(10Hz)
+    SCHED_TASK(update_altitude, 10, 100, 42),
+    // 运行导航更新(50Hz)
+    SCHED_TASK(run_nav_updates, 50, 100, 45),
+    // 更新油门悬停值(100Hz)
+    SCHED_TASK(update_throttle_hover, 100, 90, 48),
+    // 三频循环(3Hz)
+    SCHED_TASK(three_hz_loop, 3, 75, 57),
+    // 气压计累积(50Hz)
+    SCHED_TASK_CLASS(AP_Baro, &copter.barometer, accumulate, 50, 90, 63),
+    // 一频循环(1Hz)
+    SCHED_TASK(one_hz_loop, 1, 100, 81),
+    // EKF检查(10Hz)
+    SCHED_TASK(ekf_check, 10, 75, 84),
+    // 振动检查(10Hz)
+    SCHED_TASK(check_vibration, 10, 50, 87),
+    // GPS故障检查(10Hz)
+    SCHED_TASK(gpsglitch_check, 10, 50, 90),
+    // 起飞检查(50Hz)
+    SCHED_TASK(takeoff_check, 50, 50, 91),
+    // 待机更新(100Hz)
+    SCHED_TASK(standby_update, 100, 75, 96),
+    // 丢失飞行器检查(10Hz)
+    SCHED_TASK(lost_vehicle_check, 10, 50, 99),
+    // 接收Mavlink消息(400Hz)
+    SCHED_TASK_CLASS(GCS, (GCS*)&copter._gcs, update_receive, 400, 180, 102),
+    // 发送Mavlink消息(400Hz)
+    SCHED_TASK_CLASS(GCS, (GCS*)&copter._gcs, update_send, 400, 550, 105),
+    // 惯性传感器周期任务(400Hz)
+    SCHED_TASK_CLASS(AP_InertialSensor, &copter.ins, periodic, 400, 50, 123),
+
+    // ========================= 条件编译任务 (需要满足条件才运行) =========================
+    // 自定义控制 (AC_CUSTOMCONTROL_MULTI_ENABLED)
 #if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
     FAST_TASK(run_custom_controller),
 #endif
+
+    // 直升机特定的快速任务 (FRAME_CONFIG == HELI_FRAME)
 #if FRAME_CONFIG == HELI_FRAME
     FAST_TASK(heli_update_autorotation),
-#endif  // HELI_FRAME
-    // send outputs to the motors library immediately
-    FAST_TASK(motors_output),
-    // run EKF state estimator (expensive)
-    FAST_TASK(read_AHRS),
-#if FRAME_CONFIG == HELI_FRAME
     FAST_TASK(update_heli_control_dynamics),
+    SCHED_TASK(check_dynamic_flight, 50, 75, 72),
 #endif  // HELI_FRAME
-    // Inertial Nav
-    FAST_TASK(read_inertia),
-    // check if ekf has reset target heading or position
-    FAST_TASK(check_ekf_reset),
-    // run the attitude controllers
-    FAST_TASK(update_flight_mode),
-    // update home from EKF if necessary
-    FAST_TASK(update_home_from_EKF),
-    // check if we've landed or crashed
-    FAST_TASK(update_land_and_crash_detectors),
-    // surface tracking update
-    FAST_TASK(update_rangefinder_terrain_offset),
+
+    // 相机云台快速更新 (HAL_MOUNT_ENABLED)
 #if HAL_MOUNT_ENABLED
-    // camera mount's fast update
     FAST_TASK_CLASS(AP_Mount, &copter.camera_mount, update_fast),
+    SCHED_TASK_CLASS(AP_Mount, &copter.camera_mount, update, 50, 75, 108),
 #endif
+
+    // 日志记录 (HAL_LOGGING_ENABLED)
 #if HAL_LOGGING_ENABLED
     FAST_TASK(Log_Video_Stabilisation),
+    SCHED_TASK(loop_rate_logging, LOOP_RATE, 50, 75),
+    SCHED_TASK(ten_hz_logging_loop, 10, 350, 114),
+    SCHED_TASK(twentyfive_hz_logging, 25, 110, 117),
+    SCHED_TASK_CLASS(AP_Logger, &copter.logger, periodic_tasks, 400, 300, 120),
+    SCHED_TASK_CLASS(AP_Scheduler, &copter.scheduler, update_logging, 0.1, 75, 126),
 #endif
 
-    SCHED_TASK(rc_loop, 250, 130, 3),
-    SCHED_TASK(throttle_loop, 50, 75, 6),
-   
-
-
+    // 围栏检查 (AP_FENCE_ENABLED)
 #if AP_FENCE_ENABLED
     SCHED_TASK(fence_check, 25, 100, 7),
 #endif
-    SCHED_TASK_CLASS(AP_GPS, &copter.gps, update, 50, 200, 9),
+
+    // 光学流传感器 (AP_OPTICALFLOW_ENABLED)
 #if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(AP_OpticalFlow, &copter.optflow, update, 200, 160, 12),
 #endif
-    SCHED_TASK(update_batt_compass, 10, 120, 15),
-    SCHED_TASK_CLASS(RC_Channels, (RC_Channels*)&copter.g2.rc_channels,
-                     read_aux_all, 10, 50, 18),
-    SCHED_TASK(arm_motors_check, 10, 50, 21),
+
+    // 玩具模式 (TOY_MODE_ENABLED)
 #if TOY_MODE_ENABLED == ENABLED
     SCHED_TASK_CLASS(ToyMode, &copter.g2.toy_mode, update, 10, 50, 24),
 #endif
-    SCHED_TASK(auto_disarm_check, 10, 50, 27),
-    SCHED_TASK(auto_trim, 10, 75, 30),
+
+    // 测距仪 (RANGEFINDER_ENABLED)
 #if RANGEFINDER_ENABLED == ENABLED
     SCHED_TASK(read_rangefinder, 20, 100, 33),
 #endif
+
+    // 接近传感器 (HAL_PROXIMITY_ENABLED)
 #if HAL_PROXIMITY_ENABLED
     SCHED_TASK_CLASS(AP_Proximity, &copter.g2.proximity, update, 200, 50, 36),
 #endif
+
+    // 信标 (AP_BEACON_ENABLED)
 #if AP_BEACON_ENABLED
     SCHED_TASK_CLASS(AP_Beacon, &copter.g2.beacon, update, 400, 50, 39),
 #endif
-    SCHED_TASK(update_altitude, 10, 100, 42),
-    SCHED_TASK(run_nav_updates, 50, 100, 45),
-    SCHED_TASK(update_throttle_hover, 100, 90, 48),
+
+    // SmartRTL模式 (MODE_SMARTRTL_ENABLED)
 #if MODE_SMARTRTL_ENABLED == ENABLED
-    SCHED_TASK_CLASS(ModeSmartRTL, &copter.mode_smartrtl, save_position, 3, 100,
-                     51),
+    SCHED_TASK_CLASS(ModeSmartRTL, &copter.mode_smartrtl, save_position, 3, 100, 51),
 #endif
+
+    // 喷洒系统 (HAL_SPRAYER_ENABLED)
 #if HAL_SPRAYER_ENABLED
     SCHED_TASK_CLASS(AC_Sprayer, &copter.sprayer, update, 3, 90, 54),
 #endif
-    SCHED_TASK(three_hz_loop, 3, 75, 57),
+
+    // 伺服/继电器事件 (AP_SERVORELAYEVENTS_ENABLED)
 #if AP_SERVORELAYEVENTS_ENABLED
     SCHED_TASK_CLASS(AP_ServoRelayEvents, &copter.ServoRelayEvents,
                      update_events, 50, 75, 60),
 #endif
-    SCHED_TASK_CLASS(AP_Baro, &copter.barometer, accumulate, 50, 90, 63),
+
+    // 精准着陆 (AC_PRECLAND_ENABLED)
 #if AC_PRECLAND_ENABLED
     SCHED_TASK(update_precland, 400, 50, 69),
 #endif
-#if FRAME_CONFIG == HELI_FRAME
-    SCHED_TASK(check_dynamic_flight, 50, 75, 72),
-#endif
-#if HAL_LOGGING_ENABLED
-    SCHED_TASK(loop_rate_logging, LOOP_RATE, 50, 75),
-#endif
-    SCHED_TASK(one_hz_loop, 1, 100, 81),
-    SCHED_TASK(ekf_check, 10, 75, 84),
-    SCHED_TASK(check_vibration, 10, 50, 87),
-    SCHED_TASK(gpsglitch_check, 10, 50, 90),
-    SCHED_TASK(takeoff_check, 50, 50, 91),
-#if AP_LANDINGGEAR_ENABLED
-    SCHED_TASK(landinggear_update, 10, 75, 93),
-#endif
-    SCHED_TASK(standby_update, 100, 75, 96),
-    SCHED_TASK(lost_vehicle_check, 10, 50, 99),
-    SCHED_TASK_CLASS(GCS, (GCS*)&copter._gcs, update_receive, 400, 180, 102),
-    SCHED_TASK_CLASS(GCS, (GCS*)&copter._gcs, update_send, 400, 550, 105),
-#if HAL_MOUNT_ENABLED
-    SCHED_TASK_CLASS(AP_Mount, &copter.camera_mount, update, 50, 75, 108),
-#endif
+
+    // 相机 (AP_CAMERA_ENABLED)
 #if AP_CAMERA_ENABLED
     SCHED_TASK_CLASS(AP_Camera, &copter.camera, update, 50, 75, 111),
 #endif
-#if HAL_LOGGING_ENABLED
-    SCHED_TASK(ten_hz_logging_loop, 10, 350, 114),
-    SCHED_TASK(twentyfive_hz_logging, 25, 110, 117),
-    SCHED_TASK_CLASS(AP_Logger, &copter.logger, periodic_tasks, 400, 300, 120),
-#endif
-    SCHED_TASK_CLASS(AP_InertialSensor, &copter.ins, periodic, 400, 50, 123),
 
-#if HAL_LOGGING_ENABLED
-    SCHED_TASK_CLASS(AP_Scheduler, &copter.scheduler, update_logging, 0.1, 75,
-                     126),
-#endif
+    // RPM传感器 (AP_RPM_ENABLED)
 #if AP_RPM_ENABLED
     SCHED_TASK_CLASS(AP_RPM, &copter.rpm_sensor, update, 40, 200, 129),
 #endif
+
+    // 温度校准 (AP_TEMPCALIBRATION_ENABLED)
 #if AP_TEMPCALIBRATION_ENABLED
-    SCHED_TASK_CLASS(AP_TempCalibration, &copter.g2.temp_calibration, update,
-                     10, 100, 135),
+    SCHED_TASK_CLASS(AP_TempCalibration, &copter.g2.temp_calibration, update, 10, 100, 135),
 #endif
+
+    // ADS-B避碰 (HAL_ADSB_ENABLED)
 #if HAL_ADSB_ENABLED
     SCHED_TASK(avoidance_adsb_update, 10, 100, 138),
 #endif
+
+    // 高级故障安全 (ADVANCED_FAILSAFE)
 #if ADVANCED_FAILSAFE == ENABLED
     SCHED_TASK(afs_fs_check, 10, 100, 141),
 #endif
+
+    // 地形数据 (AP_TERRAIN_AVAILABLE)
 #if AP_TERRAIN_AVAILABLE
     SCHED_TASK(terrain_update, 10, 100, 144),
 #endif
+
+    // 夹爪 (AP_GRIPPER_ENABLED)
 #if AP_GRIPPER_ENABLED
     SCHED_TASK_CLASS(AP_Gripper, &copter.g2.gripper, update, 10, 75, 147),
 #endif
+
+    // 绞盘 (AP_WINCH_ENABLED)
 #if AP_WINCH_ENABLED
     SCHED_TASK_CLASS(AP_Winch, &copter.g2.winch, update, 50, 50, 150),
 #endif
+
+    // 用户自定义钩子
 #ifdef USERHOOK_FASTLOOP
     SCHED_TASK(userhook_FastLoop, 100, 75, 153),
 #endif
@@ -275,13 +261,20 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #ifdef USERHOOK_SUPERSLOWLOOP
     SCHED_TASK(userhook_SuperSlowLoop, 1, 75, 165),
 #endif
+
+    // 按钮 (HAL_BUTTON_ENABLED)
 #if HAL_BUTTON_ENABLED
     SCHED_TASK_CLASS(AP_Button, &copter.button, update, 5, 100, 168),
 #endif
+
+    // 统计信息 (STATS_ENABLED)
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats, &copter.g2.stats, update, 1, 100, 171),
 #endif
 };
+
+
+
 
 void Copter::get_scheduler_tasks(const AP_Scheduler::Task*& tasks,
                                  uint8_t& task_count, uint32_t& log_bit) {
@@ -859,6 +852,7 @@ Copter::Copter(void)
 #if HAL_LOGGING_ENABLED
       logger(g.log_bitmask),
 #endif
+
       flight_modes(&g.flight_mode1),
       simple_cos_yaw(1.0f),
       super_simple_cos_yaw(1.0),
@@ -875,4 +869,6 @@ Copter::Copter(void)
 Copter copter;
 AP_Vehicle& vehicle = copter;
 
+// 将 copter 对象注册到硬件抽象层 (AP_HAL)
+// 相当于告诉硬件驱动：有一个 Copter 对象要处理事件
 AP_HAL_MAIN_CALLBACKS(&copter);

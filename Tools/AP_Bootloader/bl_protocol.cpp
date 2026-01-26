@@ -244,8 +244,7 @@ do_jump(uint32_t stacktop, uint32_t entrypoint)
 #define STM32_OTG2_IS_OTG1 0
 #endif
 
-void
-jump_to_app()
+void jump_to_app()
 {
     const uint32_t *app_base = (const uint32_t *)(APP_START_ADDRESS);
 
