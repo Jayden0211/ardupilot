@@ -661,9 +661,21 @@ void Copter::three_hz_loop() {
 
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop() {
+    //给地面站发送消息
    gcs().send_text(MAV_SEVERITY_CRITICAL, 
                 "Current altitude: %.1fm",
                  copter.flightmode->get_alt_above_ground_cm() / 100.0f);
+    //增加日志消息 方式1
+    AP::logger().Write("test","TimeUS,Alt",   //日志里面的标签，消息下拉的具体数据
+                        "sm",//单位 seconds meters      可省略
+                        "FB",//单位的幂                 可省略
+                        "Qf",//数据类型  无符号64位      ap_log/logstruct.h查看
+                         //记录的数据1-2
+                        AP_HAL::micros64(), 
+                        (float)rangefinder_state.alt_cm
+                    );
+    
+
 #if HAL_LOGGING_ENABLED
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);

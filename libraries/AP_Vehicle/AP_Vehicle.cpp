@@ -319,7 +319,7 @@ void AP_Vehicle::setup()
 #endif
 
     // initialise serial ports
-    serial_manager.init();
+    serial_manager.init();  //·É¿Ø´®¿Ú³õÊ¼»¯
 #if HAL_GCS_ENABLED
     gcs().setup_console();
 #endif

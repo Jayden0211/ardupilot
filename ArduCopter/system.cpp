@@ -13,6 +13,7 @@ static void failsafe_check_static()
     copter.failsafe_check();
 }
 
+//  初始化参数
 void Copter::init_ardupilot()
 {
 
@@ -155,6 +156,7 @@ void Copter::init_ardupilot()
 
 #if RANGEFINDER_ENABLED == ENABLED
     // initialise rangefinder
+    //初始化激光测距的--
     init_rangefinder();
 #endif
 
