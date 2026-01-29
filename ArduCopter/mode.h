@@ -68,6 +68,7 @@ class Mode {
 public:
 
     // Auto Pilot Modes enumeration
+    //ģʽ
     enum class Number : uint8_t {
         STABILIZE =     0,  // manual airframe angle with manual throttle
         ACRO =          1,  // manual body-frame angular rate with manual throttle

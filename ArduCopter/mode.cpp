@@ -7,6 +7,7 @@
 
 /*
   constructor for Mode object
+  类的初始化
  */
 Mode::Mode(void) :
     g(copter.g),
@@ -30,14 +31,16 @@ PayloadPlace Mode::payload_place;
 #endif
 
 // return the static controller object corresponding to supplied mode
+// 模式不同数字返回模式
+// 根据模式编号返回对应的模式对象 类来新建对象
 Mode *Copter::mode_from_mode_num(const Mode::Number mode)
 {
     Mode *ret = nullptr;
-
+    //模式选择
     switch (mode) {
 #if MODE_ACRO_ENABLED == ENABLED
         case Mode::Number::ACRO:
-            ret = &mode_acro;
+            ret = &mode_acro;  //返回一个模式 对象
             break;
 #endif
 
@@ -248,7 +251,11 @@ bool Copter::gcs_mode_enabled(const Mode::Number mode_num)
 // optional force parameter used to force the flight mode change (used only first time mode is set)
 // returns true if mode was successfully set
 // ACRO, STABILIZE, ALTHOLD, LAND, DRIFT and SPORT can always be set successfully but the return state of other flight modes should be checked and the caller should deal with failures appropriately
-bool Copter::set_mode(Mode::Number mode, ModeReason reason)
+// 模式设置   地面站或者遥控器请求更改飞行模式
+// 完整的模式切换逻辑
+// 类型安全：内部用 Mode::Number 枚举避免幻数。
+// 设计模式：外部接口包装 + 内部实现分离
+bool Copter::set_mode(Mode::Number mode, ModeReason reason)   //
 {
     // update last reason
     const ModeReason last_reason = _last_reason;
@@ -345,7 +352,7 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
         mode_change_failed(new_flightmode, "need alt estimate");
         return false;
     }
-
+    //初始化模式
     if (!new_flightmode->init(ignore_checks)) {
         mode_change_failed(new_flightmode, "init failed");
         return false;
@@ -402,29 +409,34 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
     // return success
     return true;
 }
-
+// 包装器 + 额外检查
+// GCS/MAVLink 通常发送 uint8_t 数值，第2个函数适配这类外部接口。
 bool Copter::set_mode(const uint8_t new_mode, const ModeReason reason)
 {
     static_assert(sizeof(Mode::Number) == sizeof(new_mode), "The new mode can't be mapped to the vehicles mode number");
-#ifdef DISALLOW_GCS_MODE_CHANGE_DURING_RC_FAILSAFE
+    // RC failsafe 时禁止 GCS 模式切换
+    #ifdef DISALLOW_GCS_MODE_CHANGE_DURING_RC_FAILSAFE
     if (reason == ModeReason::GCS_COMMAND && copter.failsafe.radio) {
-        // don't allow mode changes while in radio failsafe
+        // don't allow mode changes while in radio failsafe // GCS 命令期间 RC 失控时拒绝
         return false;
     }
 #endif
+    // 调用第1个函数，传入转换后的枚举值
     return copter.set_mode(static_cast<Mode::Number>(new_mode), reason);
 }
 
 // update_flight_mode - calls the appropriate attitude controllers based on flight mode
 // called at 100hz or more
+// 定时调用 更新飞行模式
 void Copter::update_flight_mode()
 {
     surface_tracking.invalidate_for_logging();  // invalidate surface tracking alt, flight mode will set to true if used
 
-    flightmode->run();
+    flightmode->run();  //更新飞控的飞行模式
 }
 
 // exit_mode - high level call to organise cleanup as a flight mode is exited
+// 跳出飞行模式
 void Copter::exit_mode(Mode *&old_flightmode,
                        Mode *&new_flightmode)
 {

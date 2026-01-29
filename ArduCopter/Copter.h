@@ -872,6 +872,8 @@ private:
 
     // mode.cpp
     bool set_mode(Mode::Number mode, ModeReason reason);
+    //override覆盖基类的虚函数是一个C++编译时的安全检查机制
+    //如果基类中没有对应的虚函数，编译器会报错，防止拼写错误或签名不匹配
     bool set_mode(const uint8_t new_mode, const ModeReason reason) override;
     ModeReason _last_reason;
     // called when an attempt to change into a mode is unsuccessful:

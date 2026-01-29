@@ -574,7 +574,9 @@ const AP_Scheduler::Task AP_Vehicle::scheduler_tasks[] = {
 #if AP_FILTER_ENABLED
     SCHED_TASK_CLASS(AP_Filters,   &vehicle.filters,        update,                   1, 100, 252),
 #endif
-    SCHED_TASK(update_arming,          1,     50, 253),
+    // 原先单独车辆实现中的 1Hz arming.update() 已统一到 AP_Vehicle
+    // 解锁状态更新 1Hz
+    SCHED_TASK(update_arming,          1,     50, 253),    
 };
 
 void AP_Vehicle::get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, uint8_t& num_tasks)
@@ -1025,7 +1027,7 @@ bool AP_Vehicle::block_GCS_mode_change(uint8_t mode_num, const uint8_t *mode_lis
 
 AP_Vehicle *AP_Vehicle::_singleton = nullptr;
 
-AP_Vehicle *AP_Vehicle::get_singleton()
+AP_Vehicle *AP_Vehicle::get_singleton()  //单例模式（Singleton Pattern）
 {
     return _singleton;
 }

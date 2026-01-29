@@ -33,6 +33,7 @@ struct Guided_Limit {
 } guided_limit;
 
 // init - initialise guided controller
+// 初始化
 bool ModeGuided::init(bool ignore_checks)
 {
     // start in velaccel control mode
@@ -49,6 +50,7 @@ bool ModeGuided::init(bool ignore_checks)
 
 // run - runs the guided controller
 // should be called at 100hz or more
+// 在updata_flight_mode()中被调用
 void ModeGuided::run()
 {
     // run pause control if the vehicle is paused
@@ -58,6 +60,7 @@ void ModeGuided::run()
     }
 
     // call the correct auto controller
+    // 引导模式下的飞行阶段
     switch (guided_mode) {
 
     case SubMode::TakeOff:
@@ -117,6 +120,7 @@ bool ModeGuided::allows_weathervaning() const
 
 // initialises position controller to implement take-off
 // takeoff_alt_cm is interpreted as alt-above-home (in cm) or alt-above-terrain if a rangefinder is available
+// 引导模式下起飞
 bool ModeGuided::do_user_takeoff_start(float takeoff_alt_cm)
 {
     // calculate target altitude and frame (either alt-above-ekf-origin or alt-above-terrain)
@@ -228,6 +232,15 @@ void ModeGuided::pva_control_start()
 }
 
 // initialise guided mode's position controller
+// 引导模式下开始位置控制
+//
+/* pva_control_start() 代码复用和设计的问题都需要相同的基础配置：
+    Position-Velocity-Acceleration（位置-速度-加速度）的通用初始化
+  - 速度限制
+  - 加速度限制
+  - 控制器初始化
+  - yaw初始化
+  */
 void ModeGuided::pos_control_start()
 {
     // set to position control mode
@@ -323,6 +336,7 @@ void ModeGuided::angle_control_start()
 // set_destination - sets guided mode's target destination
 // Returns true if the fence is enabled and guided waypoint is within the fence
 // else return false if the waypoint is outside the fence
+// 设置目标航点  三维目标点  是否控制   
 bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw, bool terrain_alt)
 {
 #if AP_FENCE_ENABLED
@@ -399,7 +413,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
 
     return true;
 }
-
+//获取当前目标航点
 bool ModeGuided::get_wp(Location& destination) const
 {
     switch (guided_mode) {
@@ -419,6 +433,7 @@ bool ModeGuided::get_wp(Location& destination) const
 // sets guided mode's target from a Location object
 // returns false if destination could not be set (probably caused by missing terrain data)
 // or if the fence is enabled and guided waypoint is outside the fence
+//重构的设置位置 --标准经纬度的航点
 bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw)
 {
 #if AP_FENCE_ENABLED
@@ -507,6 +522,7 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
 }
 
 // set_velaccel - sets guided mode's target velocity and acceleration
+//设置加速度
 void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw, bool log_request)
 {
     // check we are in velocity control mode
@@ -635,6 +651,7 @@ bool ModeGuided::use_wpnav_for_position_control() const
 // climb_rate_cms_or_thrust: represents either the climb_rate (cm/s) or thrust scaled from [0, 1], unitless
 // use_thrust: IF true: climb_rate_cms_or_thrust represents thrust
 //             IF false: climb_rate_cms_or_thrust represents climb_rate (cm/s)
+//设备目标角度
 void ModeGuided::set_angle(const Quaternion &attitude_quat, const Vector3f &ang_vel, float climb_rate_cms_or_thrust, bool use_thrust)
 {
     // check we are in velocity control mode
@@ -682,16 +699,38 @@ void ModeGuided::takeoff_run()
 
 // pos_control_run - runs the guided position controller
 // called from guided_run
+// 位置控制
+// 地面检查 ?
+//     ↓
+// 地形检查 ?
+//     ↓
+// 马达配置（THROTTLE_UNLIMITED）
+//     ↓
+// 清零速度/加速度
+//     ↓
+// 检查超时 → 调整yaw
+//     ↓
+// 计算地形缓冲区
+//     ↓
+// 发送目标位置给控制器
+//     ↓
+// 更新XY和Z控制器 → 计算推力
+//     ↓
+// 姿态控制 → 计算Roll/Pitch/Yaw → 输出给电调
 void ModeGuided::pos_control_run()
 {
     // if not armed set throttle to zero and exit immediately
+    // 判断解锁或者降落
     if (is_disarmed_or_landed()) {
         // do not spool down tradheli when on the ground with motor interlock enabled
+        // 安全地处理地面状态
+        // 参数：是否为直升机 && 马达互锁开关是否打开
         make_safe_ground_handling(copter.is_tradheli() && motors->get_interlock());
         return;
     }
 
     // calculate terrain adjustments
+    // 触发地形故障安全
     float terr_offset = 0.0f;
     if (guided_pos_terrain_alt && !wp_nav->get_terrain_offset(terr_offset)) {
         // failure to set destination can only be because of missing terrain data
@@ -699,30 +738,33 @@ void ModeGuided::pos_control_run()
         return;
     }
 
-    // set motors to full range
+    // set motors to full range 马达配置
     motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
     // send position and velocity targets to position controller
+    //目标加速度和速度归零
     guided_accel_target_cmss.zero();
     guided_vel_target_cms.zero();
 
     // stop rotating if no updates received within timeout_ms
     if (millis() - update_time_ms > get_timeout_ms()) {
         if ((auto_yaw.mode() == AutoYaw::Mode::RATE) || (auto_yaw.mode() == AutoYaw::Mode::ANGLE_RATE)) {
-            auto_yaw.set_mode(AutoYaw::Mode::HOLD);
+            auto_yaw.set_mode(AutoYaw::Mode::HOLD); // 改为保持yaw
         }
     }
-
+    //地形缓冲
     float pos_offset_z_buffer = 0.0; // Vertical buffer size in m
     if (guided_pos_terrain_alt) {
         pos_offset_z_buffer = MIN(copter.wp_nav->get_terrain_margin() * 100.0, 0.5 * fabsF(guided_pos_target_cm.z));
     }
+    //输出结果给
     pos_control->input_pos_xyz(guided_pos_target_cm, terr_offset, pos_offset_z_buffer);
 
     // run position controllers
     pos_control->update_xy_controller();
     pos_control->update_z_controller();
 
+    //位置到姿态
     // call attitude controller with auto yaw
     attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.get_heading());
 }

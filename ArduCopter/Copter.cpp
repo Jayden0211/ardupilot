@@ -78,7 +78,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 
     // ========================= 必须执行的标准任务 (必须始终运行) =========================
     // RC通道处理(250Hz)
-    SCHED_TASK(rc_loop, 250, 130, 3),
+    SCHED_TASK(rc_loop, 250, 130, 3),   //定时调用的函数 ，频率 ，预计运行时间，优先级
     // 油门循环处理(50Hz)
     SCHED_TASK(throttle_loop, 50, 75, 6),
     // GPS更新(50Hz)
@@ -659,12 +659,12 @@ void Copter::three_hz_loop() {
     low_alt_avoidance();
 }
 
-// one_hz_loop - runs at 1Hz
+// one_hz_loop - runs at 1Hz   1s执行一次
 void Copter::one_hz_loop() {
     //给地面站发送消息
-   gcs().send_text(MAV_SEVERITY_CRITICAL, 
-                "Current altitude: %.1fm",
-                 copter.flightmode->get_alt_above_ground_cm() / 100.0f);
+   gcs().send_text(MAV_SEVERITY_CRITICAL,                                   //消息严重级别--
+                "Current altitude: %.1fm",                                  //消息内容
+                 copter.flightmode->get_alt_above_ground_cm() / 100.0f);    //消息参数
     //增加日志消息 方式1
     AP::logger().Write("test","TimeUS,Alt",   //日志里面的标签，消息下拉的具体数据
                         "sm",//单位 seconds meters      可省略
@@ -677,6 +677,7 @@ void Copter::one_hz_loop() {
     
 
 #if HAL_LOGGING_ENABLED
+         //是否存储日志
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
     }
