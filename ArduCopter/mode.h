@@ -1146,8 +1146,12 @@ private:
     bool _paused;
 };
 
+// public：在类外任何地方都能访问（对象、函数、其它类）。
+// protected：只能在类内部及其派生类中访问（类外不可直接访问）。
+// private：仅能在类自身和其友元访问，派生类/类外都不能直接访问。
 class ModeDrawStar : public Mode 
 {
+
     public:
     // inherit constructor
     using Mode::Mode;
@@ -1168,14 +1172,14 @@ class ModeDrawStar : public Mode
 
 protected:
 
-    const char *name() const override { return "DRAW_STAR"; }
+    const char *name() const override { return "DRAW_STAR"; }  //地面站显示交互名字
     const char *name4() const override { return "STAR"; }
 
 private:
-    Vector3f path[10];  // 航点数组  
+    Vector3f path[10];  // 航点数组    三维坐标
     int path_num;  // 当前航点号
+    void generate_path();  // 生成航线 航点
 
-    void generate_path();  // 生成航线
     void pos_control_start();  // 开始位置控制
     void pos_control_run();  // 位置控制周期调用函数
 

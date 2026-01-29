@@ -2,6 +2,13 @@
 
 #if MODE_DRAWSTAR_ENABLED == ENABLED
 
+//1.将原来的ModeGuided类的内容复制过来，改名为ModeDrawStar类
+//2.添加类的定义mode.h中 添加派生类 // class ModeDrawStar : public Mode
+//3.怎切换 mode.cpp 中添加切换代码 switch case中加入 enum
+//4.gcs_mavlink 中的base_mode加入drawstar模式的识别
+
+
+
 /*
  * 五角星航线模式初始化
  */
@@ -22,12 +29,12 @@ void ModeDrawStar::generate_path()
 {
     float radius_cm = g2.star_radius_cm;
 
-    wp_nav->get_wp_stopping_point(path[0]);  //0号航点是起始点
+    wp_nav->get_wp_stopping_point(path[0]);  //0号航点是起始点 也是获取停止点
     //其他航点为起始点的偏移量
     //cosf是float类型的 
     //radians  角度变弧度
     path[1] = path[0] + Vector3f(1.0f, 0, 0) * radius_cm;
-    path[2] = path[0] + Vector3f(-cosf(radians(36.0f)), -sinf(radians(36.0f)), 0) * radius_cm;
+    path[2] = path[0] + Vector3f(-cosf(radians(36.0f)), -sinf(radians(36.0f)), 0) * radius_cm;    //radians 角度变弧度
     path[3] = path[0] + Vector3f(sinf(radians(18.0f)), cosf(radians(18.0f)), 0) * radius_cm;
     path[4] = path[0] + Vector3f(sinf(radians(18.0f)), -cosf(radians(18.0f)), 0) * radius_cm;
     path[5] = path[0] + Vector3f(-cosf(radians(36.0f)), sinf(radians(36.0f)), 0) * radius_cm;
@@ -38,6 +45,7 @@ void ModeDrawStar::generate_path()
 void ModeDrawStar::pos_control_start()
 {
     // initialise waypoint and spline controller
+    // 航点导航库初始化
     wp_nav->wp_and_spline_init();
 
     // no need to check return status because terrain data is not used
