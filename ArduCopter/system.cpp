@@ -38,7 +38,7 @@ void Copter::init_ardupilot()
 #endif
 
     // initialise notify system
-    notify.init();
+    notify.init();    //notify的初始化 ->进到add_backends函数里去了
     notify_flight_mode();
 
     // initialise battery monitor
