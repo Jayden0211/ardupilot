@@ -1,5 +1,9 @@
 #pragma once
 
+
+//修改自定义参数
+//ParametersG2参数满    class 256个参数
+
 #define AP_PARAM_VEHICLE_NAME copter
 
 #include <AP_Common/AP_Common.h>
@@ -703,8 +707,9 @@ public:
     AP_Float pldp_delay_s;
     AP_Float pldp_descent_speed_ms;
 
-
-    AP_Float star_radius_cm;
+    //添加的drawstar半径参数
+    //float类型参数  AP_Float 
+    AP_Float star_radius_cm;   
 };
 
 extern const AP_Param::Info        var_info[];

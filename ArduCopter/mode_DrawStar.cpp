@@ -27,7 +27,7 @@ bool ModeDrawStar::init(bool ignore_checks)
 // 顶点坐标 
 void ModeDrawStar::generate_path()
 {
-    float radius_cm = g2.star_radius_cm;
+    float radius_cm = g2.star_radius_cm;  
 
     wp_nav->get_wp_stopping_point(path[0]);  //0号航点是起始点 也是获取停止点
     //其他航点为起始点的偏移量
