@@ -39,10 +39,10 @@ public:
     uint32_t last_frame_ms;   //最后一次收到帧的时间 ms
 
 private:
-    AP_HAL::UARTDriver *_port;              // UART used to send data to receiver  哪个串口
+    AP_HAL::UARTDriver *_port;              // UART used to send data to receiver  接飞控哪个串口
 
     uint8_t _step;    //解析步骤
 
-    uint8_t _cx_temp;   //零食变量
+    uint8_t _cx_temp;   //临时变量
     uint8_t _cy_temp;
 };

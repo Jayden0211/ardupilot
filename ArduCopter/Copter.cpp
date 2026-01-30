@@ -75,6 +75,7 @@
  */
 
 #include "Copter.h"
+#include <AP_OpenMV/AP_OpenMV.h>
 #include <AP_InertialSensor/AP_InertialSensor_rate_config.h>
 
 #define FORCE_VERSION_H_INCLUDE
@@ -198,7 +199,8 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(loop_rate_logging, LOOP_RATE,    50,  75),
 #endif
     SCHED_TASK(one_hz_loop,            1,    100,  81),
-    SCHED_TASK(updata_OpenMV,         400,   100,  85),
+    //顶层调用
+    SCHED_TASK(update_OpenMV,         400,   100,  85),
     SCHED_TASK(ekf_check,             10,     75,  84),
     SCHED_TASK(check_vibration,       10,     50,  87),
     SCHED_TASK(gpsglitch_check,       10,     50,  90),
@@ -778,6 +780,15 @@ uint32_t Copter::ap_value() const
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+
+    //openmv 调试输出 向地面站发送
+    gcs().send_text(MAV_SEVERITY_DEBUG, 
+                    "OpenMV x:%d y:%d",
+                    openmv.cx,
+                    openmv.cy);
+
+
+
 #if HAL_LOGGING_ENABLED
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap_value());
@@ -975,6 +986,19 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
     return true;
 }
 
+
+void Copter::update_OpenMV()
+{
+    openmv.update();
+        
+}
+
+
+
+
+
+
+
 /*
   constructor for main Copter class
  */
@@ -994,5 +1018,6 @@ Copter::Copter(void)
 
 Copter copter;
 AP_Vehicle& vehicle = copter;
+AP_OpenMV openmv;
 
 AP_HAL_MAIN_CALLBACKS(&copter);

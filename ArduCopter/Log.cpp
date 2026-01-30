@@ -580,7 +580,6 @@ const struct LogStructure Copter::log_structure[] = {
 
     { LOG_GUIDED_ATTITUDE_TARGET_MSG, sizeof(log_Guided_Attitude_Target),
       "GUIA",  "QBffffffff",    "TimeUS,Type,Roll,Pitch,Yaw,RollRt,PitchRt,YawRt,Thrust,ClimbRt", "s-dddkkk-n", "F-000000-0" , true },
-<<<<<<< Updated upstream
 
 // @LoggerMessage: RTDT
 // @Description: Attitude controller time deltas
@@ -593,11 +592,8 @@ const struct LogStructure Copter::log_structure[] = {
     { LOG_RATE_THREAD_DT_MSG, sizeof(log_Rate_Thread_Dt),
       "RTDT", "Qffff", "TimeUS,dt,dtAvg,dtMax,dtMin", "sssss", "F----" , true },
 
-=======
-      
     { LOG_OPENMV_MSG, sizeof(log_OpenMV),
       "OMVN",  "QBB",           "TimeUS,CentX,CentY", "s--", "F--" },
->>>>>>> Stashed changes
 };
 
 uint8_t Copter::get_num_log_structures() const

@@ -35,6 +35,7 @@
 
 // Application dependencies
 #include <AP_Logger/AP_Logger.h>            // ArduPilot Mega Flash Memory Library
+#include <AP_OpenMV/AP_OpenMV.h>
 #include <AP_Math/AP_Math.h>                // ArduPilot Mega Vector/Matrix math Library
 #include <AP_AccelCal/AP_AccelCal.h>        // interface and maths for accelerometer calibration
 #include <AP_InertialSensor/AP_InertialSensor.h>                // ArduPilot Mega Inertial Sensor (accel & gyro) Library
@@ -727,8 +728,8 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
-    
     void update_OpenMV(void);
+   
     // Attitude.cpp
     void update_throttle_hover();
     float get_pilot_desired_climb_rate_ms();
@@ -914,17 +915,12 @@ private:
     void Log_Write_Data(LogDataID id, float value);
     void Log_Write_PTUN(uint8_t param, float tuning_val, float tune_min, float tune_max, float norm_in);
     void Log_Video_Stabilisation();
-<<<<<<< Updated upstream
-    void Log_Write_Guided_Position_Target(ModeGuided::SubMode submode, const Vector3p& pos_target_ned_m, bool is_terrain_alt, const Vector3f& vel_target_ms, const Vector3f& accel_target_mss);
-    void Log_Write_Guided_Attitude_Target(ModeGuided::SubMode submode, float roll, float pitch, float yaw, const Vector3f &ang_vel, float thrust, float climb_rate);
-=======
-    void Log_Write_OpenMV(); 
+    void Log_Write_OpenMV();
 #if FRAME_CONFIG == HELI_FRAME
     void Log_Write_Heli(void);
 #endif
-    void Log_Write_Guided_Position_Target(ModeGuided::SubMode submode, const Vector3f& pos_target, bool terrain_alt, const Vector3f& vel_target, const Vector3f& accel_target);
-    void Log_Write_Guided_Attitude_Target(ModeGuided::SubMode target_type, float roll, float pitch, float yaw, const Vector3f &ang_vel, float thrust, float climb_rate);
->>>>>>> Stashed changes
+    void Log_Write_Guided_Position_Target(ModeGuided::SubMode submode, const Vector3p& pos_target_ned_m, bool is_terrain_alt, const Vector3f& vel_target_ms, const Vector3f& accel_target_mss);
+    void Log_Write_Guided_Attitude_Target(ModeGuided::SubMode submode, float roll, float pitch, float yaw, const Vector3f &ang_vel, float thrust, float climb_rate);
     void Log_Write_SysID_Setup(uint8_t systemID_axis, float waveform_magnitude, float frequency_start, float frequency_stop, float time_fade_in, float time_const_freq, float time_record, float time_fade_out);
     void Log_Write_SysID_Data(float waveform_time, float waveform_sample, float waveform_freq, float angle_x, float angle_y, float angle_z, float accel_x, float accel_y, float accel_z);
     void Log_Write_Vehicle_Startup_Messages();
@@ -1127,6 +1123,7 @@ public:
 };
 
 extern Copter copter;
+extern AP_OpenMV openmv;
 
 using AP_HAL::millis;
 using AP_HAL::micros;
