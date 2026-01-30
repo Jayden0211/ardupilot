@@ -989,7 +989,74 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
 
 void Copter::update_OpenMV()
 {
-    openmv.update();
+    // simulation
+    bool sim_openmv_new_data = false;   //模拟是否有新的数据
+    static uint32_t last_sim_new_data_time_ms = 0;   //最后一次仿真的时间
+   
+    //飞行模式不是在引导模式
+    if (!flightmode->in_guided_mode()) {
+        last_sim_new_data_time_ms = millis();  // 更新时间
+        openmv.cx = 80;
+        openmv.cy = 60;
+    } else if (millis()- last_sim_new_data_time_ms < 15000) {     //前15秒模拟有新的数据
+        sim_openmv_new_data = true;
+        openmv.last_frame_ms = millis();
+        openmv.cx = 1;
+        openmv.cy = 1;
+    } else if (millis()- last_sim_new_data_time_ms < 30000) {    //15-30秒模拟有新的数据
+        sim_openmv_new_data = true;
+        openmv.last_frame_ms = millis();
+        openmv.cx = 160;
+        openmv.cy = 120;
+    } else {                                           //30秒后没有新的数据
+        sim_openmv_new_data = false;
+        openmv.cx = 80;
+        openmv.cy = 60;
+    }
+     // end of simulation code
+
+    static uint32_t last_set_pos_target_time_ms = 0;   //最后一次设置位置目标的时间
+    Vector3f target = Vector3f(0, 0, 0);                //目标位置
+    if(openmv.update() || sim_openmv_new_data) {    //如果更新获得新的帧或者仿真
+        Log_Write_OpenMV();             
+
+        if (!flightmode->in_guided_mode()) {   //不是引导模式直接退出
+            return;
+        }
+
+    int16_t target_body_frame_y = (int16_t)openmv.cx - 80;  // 机体坐标系减了80 
+    int16_t target_body_frame_z = (int16_t)openmv.cy - 60;
+
+    // 坐标到转换成角度    
+    float angle_y_deg = target_body_frame_y * 60.0f / 160.0f;    //摄像头的视角是60度，像素宽度160
+    float angle_z_deg = target_body_frame_z * 60.0f / 120.0f;
+    //三维化坐标
+    Vector3f v = Vector3f(1.0f, tanf(radians(angle_y_deg)), tanf(radians(angle_z_deg)));
+    v = v / v.length();    //归一化单位向量
+
+    //机体坐标系转换到NED（北东地）坐标系  摄像头固定，飞机有倾斜
+    const Matrix3f &rotMat = copter.ahrs.get_rotation_body_to_ned();  //坐标系旋转
+    v = rotMat * v;     //距离 100m处的坐标
+
+    target = v * 10000.0f;  // distance 100m
+
+    target.z = -target.z;  // ned to neu  飞机是北东高
+    //Vector3f current_pos_ned_m;
+    //Vector3f current_pos = AP_Vehicle::ahrs().get_relative_position_NED_origin_float(current_pos_ned_m);   //导航里面得到飞机位置
+
+    Vector3f current_pos =inertial.get_position_neu_cm();
+    target = target + current_pos;    //当前位置+ 目标偏移量
+
+        if(millis() - last_set_pos_target_time_ms > 500) {  // call in 2Hz  500ms
+        // wp_nav->set_wp_destination(target, false);
+        const Location dest_loc = Location::from_ekf_offset_NED_m(target, Location::AltFrame::ABOVE_ORIGIN);
+        mode_guided.set_destination(dest_loc, false, 0, true, 0, false);
+        //mode_guided.set_destination(target, false, 0, true, 0, false);
+        last_set_pos_target_time_ms= millis();  //更新时间
+
+        }
+    }
+
         
 }
 

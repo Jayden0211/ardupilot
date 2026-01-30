@@ -11,6 +11,28 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+   
+Blimp 是 ArduPilot 中用于“飞艇/氦气球/飞艇”这一类载具的顶层 vehicle 类（定义在 Blimp.h / 实现于 Blimp.cpp）。它的主要职责包括：
+
+飞行控制与模式管理 ?
+
+管理飞行模式、控制状态（control_mode）、模式切换与相关回调。
+实现特定模式（如 ModeLoiter、ModeLand、ModeVelocity 等）的接口和调度。
+传感器 / 导航 / 状态管理 ?
+
+与 AHRS/EKF（AP::ahrs()）与 惯性导航 (AP_InertialNav inertial_nav) 集成，提供位置/速度估计、home 点更新等。
+执行机构与动力 ??
+
+管理推进/舵面（Fins）、油门与电机输出，包含马达臂能/解锁/安全逻辑与输出映射（RC_Channel_Blimp）。
+安全与故障处理 ??
+
+实现 arming、failsafe（电池、RC、EKF 等）、着陆检测与限幅逻辑。
+参数与日志 ??
+
+注册/加载车辆参数（Parameters）、提供日志 (Log_* 函数) 与调试信息。
+外设与地面站交互 ?
+
+GCS 通信、MAVLink 消息通过 GCS_Blimp / GCS_MAVLINK_Blimp 管理。
  */
 #pragma once
 /*
