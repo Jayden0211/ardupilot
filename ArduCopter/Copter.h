@@ -915,7 +915,7 @@ private:
     void Log_Write_Data(LogDataID id, float value);
     void Log_Write_PTUN(uint8_t param, float tuning_val, float tune_min, float tune_max, float norm_in);
     void Log_Video_Stabilisation();
-    void Log_Write_OpenMV();
+    void Log_Write_OpenMV();    //声明函数 定义在log.cpp中
 #if FRAME_CONFIG == HELI_FRAME
     void Log_Write_Heli(void);
 #endif

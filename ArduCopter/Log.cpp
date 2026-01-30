@@ -105,10 +105,15 @@ void Copter::Log_Write_EKF_POS()
     AP::ahrs().Log_Write();
 }
 
+/*添加自定义log
+1.添加结构体 log_OpenMV
+2.存储函数 Log_Write_OpenMV
+*/
+
 //记录log OpenMV数据包
 struct PACKED log_OpenMV {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
+    LOG_PACKET_HEADER;    //帧头都相同功能
+    uint64_t time_us;     //记录时刻
     uint8_t cx;
     uint8_t cy;
 };
@@ -116,12 +121,12 @@ struct PACKED log_OpenMV {
 void Copter::Log_Write_OpenMV()
 {
     struct log_OpenMV pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_OPENMV_MSG),
-        time_us         : AP_HAL::micros64(),
+        LOG_PACKET_HEADER_INIT(LOG_OPENMV_MSG),    //结构体填充
+        time_us         : AP_HAL::micros64(),       //时间
         cx              : openmv.cx,
         cy              : openmv.cy
     };
-    logger.WriteBlock(&pkt, sizeof(pkt));
+    logger.WriteBlock(&pkt, sizeof(pkt));    //写入
 }
 
 
@@ -592,8 +597,9 @@ const struct LogStructure Copter::log_structure[] = {
     { LOG_RATE_THREAD_DT_MSG, sizeof(log_Rate_Thread_Dt),
       "RTDT", "Qffff", "TimeUS,dt,dtAvg,dtMax,dtMin", "sssss", "F----" , true },
 
+      //指示符号  LOG_OPENMV_MSG  并且要添加到define中   omvn如何显示  QBB 64位和2个8位的整数
     { LOG_OPENMV_MSG, sizeof(log_OpenMV),
-      "OMVN",  "QBB",           "TimeUS,CentX,CentY", "s--", "F--" },
+      "OMVN",  "QBB", "TimeUS,CentX,CentY", "s--", "F--" },     //自定义log结构体 日志结构
 };
 
 uint8_t Copter::get_num_log_structures() const
