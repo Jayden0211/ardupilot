@@ -59,20 +59,20 @@ private:
    
     uint32_t crc_error_counter = 0;
 
-    struct PACKED nova_header
+    struct PACKED nova_header    //协议帧头
     {
         // 0
-        uint8_t preamble[3];
+        uint8_t preamble[3];   //AA 44 12
         // 3
-        uint8_t headerlength;
+        uint8_t headerlength;    
         // 4
-        uint16_t messageid;
+        uint16_t messageid;   //消息ID
         // 6
-        uint8_t messagetype;
+        uint8_t messagetype; 
         //7
-        uint8_t portaddr;
+        uint8_t portaddr;   //串口
         //8
-        uint16_t messagelength;
+        uint16_t messagelength;   //消息长度
         //10
         uint16_t sequence;
         //12
@@ -91,7 +91,7 @@ private:
         uint16_t recvswver;
     };    
 
-    struct PACKED psrdop
+    struct PACKED psrdop  //DOP信息
     {
         float gdop;
         float pdop;
@@ -103,11 +103,11 @@ private:
         // extra data for individual prns
     };
 
-    struct PACKED bestpos
+    struct PACKED bestpos   //最佳定位信息
     {
         uint32_t solstat;      ///< Solution status
         uint32_t postype;      ///< Position type
-        double lat;            ///< latitude (deg)
+        double lat;            ///< latitude (deg)   //纬度
         double lng;            ///< longitude (deg)
         double hgt;            ///< height above mean sea level (m)
         float undulation;      ///< relationship between the geoid and the ellipsoid (m)
@@ -129,6 +129,7 @@ private:
         uint8_t gpsglosigmask;
     };
 
+
     struct PACKED bestvel
     {
         uint32_t solstat;
@@ -141,7 +142,7 @@ private:
         double vertspd;
         float resv;
     };
-    
+    //union 的方法进行解帧  
     union PACKED msgbuffer {
         bestvel bestvelu;
         bestpos bestposu;
@@ -154,7 +155,7 @@ private:
         uint8_t data[28];
     };
 
-    struct PACKED nova_msg_parser
+    struct PACKED nova_msg_parser  //总体信息状态
     {
         enum
         {

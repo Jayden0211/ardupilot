@@ -68,7 +68,7 @@ class Mode {
 public:
 
     // Auto Pilot Modes enumeration
-    //模式
+    //模式对应数字
     enum class Number : uint8_t {
         STABILIZE =     0,  // manual airframe angle with manual throttle
         ACRO =          1,  // manual body-frame angular rate with manual throttle
@@ -109,6 +109,7 @@ public:
 
     friend class _AutoTakeoff;
 
+    //虚函数 对应了所有模式都需要的函数
     // returns a unique number specific to this mode
     virtual Number mode_number() const = 0;
 
@@ -117,8 +118,8 @@ public:
         return true;
     }
     virtual void exit() {};
-    virtual void run() = 0;
-    virtual bool requires_GPS() const = 0;
+    virtual void run() = 0;                     //定时调用
+    virtual bool requires_GPS() const = 0;      //是否需要GPS
     virtual bool has_manual_throttle() const = 0;
     virtual bool allows_arming(AP_Arming::Method method) const = 0;
     virtual bool is_autopilot() const { return false; }

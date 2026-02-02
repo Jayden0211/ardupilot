@@ -67,8 +67,8 @@ const char* const AP_GPS_NOVA::_initialisation_blob[4] {
 };
 
 // Process all bytes available from the stream
-//
-bool
+//  50hz速度会调用
+bool 
 AP_GPS_NOVA::read(void)
 {
     if (gps._auto_config != AP_GPS::GPS_AUTO_CONFIG_DISABLE) {
@@ -85,8 +85,8 @@ AP_GPS_NOVA::read(void)
         }
     }
 
-    bool ret = false;
-    for (uint16_t i=0; i<8192; i++) {
+    bool ret = false;    //定义一个标志位，表示是否成功解析出有效数据
+    for (uint16_t i=0; i<8192; i++) {   //读取出串口的缓存数据
         uint8_t temp;
         if (!port->read(temp)) {
             break;
@@ -94,16 +94,16 @@ AP_GPS_NOVA::read(void)
 #if AP_GPS_DEBUG_LOGGING_ENABLED
         log_data(&temp, 1);
 #endif
-        ret |= parse(temp);
+        ret |= parse(temp);   //调用解析函数，解析数据 成功解析返回true
     }
     
     return ret;
 }
-
+// 解析数据
 bool
 AP_GPS_NOVA::parse(uint8_t temp)
 {
-    switch (nova_msg.nova_state)
+    switch (nova_msg.nova_state)   //根据当前状态进行处理
     {
         default:
         case nova_msg_parser::PREAMBLE1:
@@ -178,7 +178,7 @@ AP_GPS_NOVA::parse(uint8_t temp)
             crc = CalculateBlockCRC32((uint32_t)nova_msg.header.nova_headeru.messagelength, (uint8_t *)&nova_msg.data, crc);
 
             if (nova_msg.crc == crc) {
-                return process_message();
+                return process_message();  //解析帧提取数据
             } else {
                 Debug("crc failed");
                 crc_error_counter++;
@@ -189,6 +189,7 @@ AP_GPS_NOVA::parse(uint8_t temp)
     return false;
 }
 
+// 提取数据
 bool
 AP_GPS_NOVA::process_message(void)
 {

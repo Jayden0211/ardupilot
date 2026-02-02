@@ -68,7 +68,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     // 检查EKF是否重置了目标航向或位置
     FAST_TASK(check_ekf_reset),
     // 运行姿态控制器
-    FAST_TASK(update_flight_mode),
+    FAST_TASK(update_flight_mode),    //飞行模式
     // 从EKF更新主页位置
     FAST_TASK(update_home_from_EKF),
     // 检查是否着陆或坠毁
