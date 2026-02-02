@@ -129,6 +129,7 @@ static_assert((uint32_t)AP_GPS::GPS_Status::GPS_OK_FIX_3D_RTK_FIXED == (uint8_t)
 AP_GPS *AP_GPS::_singleton;
 
 // table of user settable parameters
+// 单独对应的参数
 const AP_Param::GroupInfo AP_GPS::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: 1st GPS type
@@ -136,6 +137,7 @@ const AP_Param::GroupInfo AP_GPS::var_info[] = {
     // @Values: 0:None,1:AUTO,2:uBlox,5:NMEA,6:SiRF,7:HIL,8:SwiftNav,9:DroneCAN,10:SBF,11:GSOF,13:ERB,14:MAV,15:NOVA,16:HemisphereNMEA,17:uBlox-MovingBaseline-Base,18:uBlox-MovingBaseline-Rover,19:MSP,20:AllyStar,21:ExternalAHRS,22:DroneCAN-MovingBaseline-Base,23:DroneCAN-MovingBaseline-Rover,24:UnicoreNMEA,25:UnicoreMovingBaselineNMEA,26:SBF-DualAntenna
     // @RebootRequired: True
     // @User: Advanced
+    //定义在GPS中的会自动生成GPS_TYPE
     AP_GROUPINFO("_TYPE",    0, AP_GPS, _type[0], HAL_GPS_TYPE_DEFAULT),
 
 #if GPS_MAX_RECEIVERS > 1
@@ -436,12 +438,13 @@ const AP_Param::GroupInfo AP_GPS::var_info[] = {
     AP_GROUPEND
 };
 
-// constructor
+// constructor 构造函数
+// 定义类后自动调用
 AP_GPS::AP_GPS()
-{
+{   //自动设置GPS
     static_assert((sizeof(_initialisation_blob) * (CHAR_BIT + 2)) < (4800 * GPS_BAUD_TIME_MS * 1e-3),
                     "GPS initilisation blob is too large to be completely sent before the baud rate changes");
-
+    //设置参数
     AP_Param::setup_object_defaults(this, var_info);
 
     if (_singleton != nullptr) {
@@ -470,6 +473,7 @@ bool AP_GPS::needs_uart(GPS_Type type) const
 }
 
 /// Startup initialisation.
+// 初始化 函数 -> 在system.cpp的AP_PeriphManager::init中被调用
 void AP_GPS::init(const AP_SerialManager& serial_manager)
 {
     // Set new primary param based on old auto_switch use second option
@@ -514,6 +518,7 @@ uint8_t AP_GPS::num_sensors(void) const
     return num_instances;
 }
 
+//顶层代码想单独调用信息 直接调用
 bool AP_GPS::speed_accuracy(uint8_t instance, float &sacc) const
 {
     if (state[instance].have_speed_accuracy) {
@@ -604,7 +609,7 @@ uint64_t AP_GPS::last_message_epoch_usec(uint8_t instance) const
 
 /*
   send some more initialisation string bytes if there is room in the
-  UART transmit buffer
+  UART transmit buffer  blob发送配置段程序
  */
 void AP_GPS::send_blob_start(uint8_t instance, const char *_blob, uint16_t size)
 {
@@ -698,7 +703,7 @@ void AP_GPS::send_blob_update(uint8_t instance)
 /*
   run detection step for one GPS instance. If this finds a GPS then it
   will fill in drivers[instance] and change state[instance].status
-  from NO_GPS to NO_FIX.
+  from NO_GPS to NO_FIX.  检查GPS是哪一家的GPS
  */
 void AP_GPS::detect_instance(uint8_t instance)
 {
@@ -1157,6 +1162,7 @@ void AP_GPS::update(void)
 
 #ifndef HAL_BUILD_AP_PERIPH
     // update notify with gps status. We always base this on the primary_instance
+    // 对外指示器 状态传出
     AP_Notify::flags.gps_status = state[primary_instance].status;
     AP_Notify::flags.gps_num_sats = state[primary_instance].num_sats;
 #endif
@@ -1324,6 +1330,7 @@ void AP_GPS::update_primary(void)
 }
 #endif  // GPS_MAX_RECEIVERS > 1
 
+//注入的信息 RTK 进行定位信息
 #if HAL_GCS_ENABLED
 void AP_GPS::handle_gps_inject(const mavlink_message_t &msg)
 {

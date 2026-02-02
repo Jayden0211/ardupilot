@@ -53,6 +53,7 @@ public:
 
     // we declare a virtual destructor so that GPS drivers can
     // override with a custom destructor if need be.
+    //虚函数就是 ：定义接口 输入参数 返回  不用的话使用默认的return
     virtual ~AP_GPS_Backend(void) {}
 
     // The read() method is the only one needed in each driver. It

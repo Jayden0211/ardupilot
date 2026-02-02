@@ -34,10 +34,10 @@
    maximum number of GPS instances available on this platform. If more
    than 1 then redundant sensors may be available
  */
-#ifndef GPS_MAX_RECEIVERS
+#ifndef GPS_MAX_RECEIVERS           //最多几个GPS
 #define GPS_MAX_RECEIVERS 2 // maximum number of physical GPS sensors allowed - does not include virtual GPS created by blending receiver data
 #endif
-#if !defined(GPS_MAX_INSTANCES)
+#if !defined(GPS_MAX_INSTANCES)    //instance 实例化
 #if GPS_MAX_RECEIVERS > 1
 #define GPS_MAX_INSTANCES  (GPS_MAX_RECEIVERS + 1) // maximum number of GPS instances including the 'virtual' GPS created by blending receiver data
 #else
@@ -91,7 +91,7 @@ class AP_GPS
     friend class AP_GPS_DroneCAN;
 
 public:
-    AP_GPS();
+    AP_GPS();   //构造函数
 
     /* Do not allow copies */
     CLASS_NO_COPY(AP_GPS);
@@ -105,7 +105,7 @@ public:
         return rsem;
     }
     
-    // GPS driver types
+    // GPS driver types  定义枚举类型
     enum GPS_Type {
         GPS_TYPE_NONE  = 0,
         GPS_TYPE_AUTO  = 1,
@@ -140,6 +140,7 @@ public:
 
     /// GPS status codes.  These are kept aligned with MAVLink by
     /// static_assert in AP_GPS.cpp
+    // 定义状态
     enum GPS_Status {
         NO_GPS = 0,                  ///< No GPS connected/detected
         NO_FIX = 1,                  ///< Receiving valid GPS messages but no lock
@@ -147,11 +148,11 @@ public:
         GPS_OK_FIX_3D = 3,           ///< Receiving valid messages and 3D lock
         GPS_OK_FIX_3D_DGPS = 4,      ///< Receiving valid messages and 3D lock with differential improvements
         GPS_OK_FIX_3D_RTK_FLOAT = 5, ///< Receiving valid messages and 3D RTK Float
-        GPS_OK_FIX_3D_RTK_FIXED = 6, ///< Receiving valid messages and 3D RTK Fixed
+        GPS_OK_FIX_3D_RTK_FIXED = 6, ///< Receiving valid messages and 3D RTK Fixed  达到RTK状态
     };
 
     // GPS navigation engine settings. Not all GPS receivers support
-    // this
+    // this   
     enum GPS_Engine_Setting {
         GPS_ENGINE_NONE        = -1,
         GPS_ENGINE_PORTABLE    = 0,
@@ -182,6 +183,7 @@ public:
     /*
       The GPS_State structure is filled in by the backend driver as it
       parses each message from the GPS.
+      GPS  驱动对上层的接口
      */
     struct GPS_State {
         uint8_t instance; // the instance number of this GPS
@@ -191,13 +193,14 @@ public:
         uint32_t time_week_ms;              ///< GPS time (milliseconds from start of GPS week)
         uint16_t time_week;                 ///< GPS week number
         Location location;                  ///< last fix location
-        float ground_speed;                 ///< ground speed in m/s
+
+        float ground_speed;                 ///< ground speed in m/s  利用的是卫星的多普勒效应计算
         float ground_course;                ///< ground course in degrees, wrapped 0-360
         float gps_yaw;                      ///< GPS derived yaw information, if available (degrees)
         uint32_t gps_yaw_time_ms;           ///< timestamp of last GPS yaw reading
         bool  gps_yaw_configured;           ///< GPS is configured to provide yaw
-        uint16_t hdop;                      ///< horizontal dilution of precision in cm
-        uint16_t vdop;                      ///< vertical dilution of precision in cm
+        uint16_t hdop;                      ///< horizontal dilution of precision in cm 水平精度因子
+        uint16_t vdop;                      ///< vertical dilution of precision in cm   
         uint8_t num_sats;                   ///< Number of visible satellites
         Vector3f velocity;                  ///< 3D velocity in m/s, in NED format
         float speed_accuracy;               ///< 3D velocity RMS accuracy estimate in m/s
@@ -213,9 +216,10 @@ public:
         float undulation;                   //<height that WGS84 is above AMSL at the current location
         bool have_undulation;               ///<do we have a value for the undulation
         uint32_t last_gps_time_ms;          ///< the system time we got the last GPS timestamp, milliseconds
-        uint64_t last_corrected_gps_time_us;///< the system time we got the last corrected GPS timestamp, microseconds
+        uint64_t last_corrected_gps_time_us;///< the system time we got the last corrected GPS timestamp, microseconds 最后一次的时间戳
+
         bool corrected_timestamp_updated;  ///< true if the corrected timestamp has been updated
-        uint32_t lagged_sample_count;       ///< number of samples with 50ms more lag than expected
+        uint32_t lagged_sample_count;       ///< number of samples with 50ms more lag than expected  
 
         // all the following fields must only all be filled by RTK capable backend drivers
         uint32_t rtk_time_week_ms;         ///< GPS Time of Week of last baseline in milliseconds
@@ -238,14 +242,17 @@ public:
     };
 
     /// Startup initialisation.
+    //初始化
     void init(const class AP_SerialManager& serial_manager);
 
     /// Update GPS state based on possible bytes received from the module.
     /// This routine must be called periodically (typically at 10Hz or
     /// more) to process incoming data.
+    //更新 定时调用 解帧-数据到结构体中
     void update(void);
 
     // Pass mavlink data to message handlers (for MAV type)
+    // 通过mavlink解析
     void handle_msg(mavlink_channel_t chan, const mavlink_message_t &msg);
 #if HAL_MSP_GPS_ENABLED
     void handle_msp(const MSP::msp_gps_data_message_t &pkt);
@@ -263,6 +270,7 @@ public:
     // return number of active GPS sensors. Note that if the first GPS
     // is not present but the 2nd is then we return 2. Note that a blended
     // GPS solution is treated as an additional sensor.
+    // GPS数量
     uint8_t num_sensors(void) const;
 
     // Return the index of the primary sensor which is the index of the sensor contributing to
@@ -589,6 +597,7 @@ public:
 protected:
 
     // configuration parameters
+    // 内部变量
     AP_Int8 _type[GPS_MAX_RECEIVERS];
     AP_Int8 _navfilter;
     AP_Int8 _auto_switch;
